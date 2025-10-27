@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マッチ3パズルゲーム</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes splat {
+      0% { transform: scale(1) rotate(0deg); opacity: 1; }
+      20% { transform: scale(1.3) rotate(0deg); opacity: 1; }
+      100% { transform: scale(0.1) rotate(20deg); opacity: 0; }
+    }
+    @keyframes slime-splash1 {
+      0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 1; border-radius: 50%; }
+      100% { transform: scale(2) translateX(-40px) translateY(-35px); opacity: 0; border-radius: 30% 70% 70% 30%; }
+    }
+    @keyframes slime-splash2 {
+      0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 1; border-radius: 50%; }
+      100% { transform: scale(1.8) translateX(40px) translateY(-30px); opacity: 0; border-radius: 70% 30% 30% 70%; }
+    }
+    @keyframes slime-splash3 {
+      0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 0.9; border-radius: 50%; }
+      100% { transform: scale(1.5) translateX(-25px) translateY(35px); opacity: 0; border-radius: 40% 60% 50% 50%; }
+    }
+    @keyframes slime-splash4 {
+      0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 0.9; border-radius: 50%; }
+      100% { transform: scale(1.5) translateX(35px) translateY(30px); opacity: 0; border-radius: 60% 40% 50% 50%; }
+    }
+    @keyframes slime-splash5 {
+      0% { transform: scale(0.6) translateX(0) translateY(0); opacity: 0.8; border-radius: 50%; }
+      100% { transform: scale(1.2) translateX(0px) translateY(-45px); opacity: 0; border-radius: 50% 50% 40% 60%; }
+    }
+    @keyframes slime-splash6 {
+      0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 0.7; border-radius: 50%; }
+      100% { transform: scale(1) translateX(0px) translateY(40px); opacity: 0; border-radius: 40% 60% 50% 50%; }
+    }
+    @keyframes star-burst1 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-50px, -50px) scale(1) rotate(180deg); opacity: 0; }
+    }
+    @keyframes star-burst2 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(50px, -50px) scale(1) rotate(-180deg); opacity: 0; }
+    }
+    @keyframes star-burst3 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-50px, 50px) scale(1) rotate(180deg); opacity: 0; }
+    }
+    @keyframes star-burst4 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(50px, 50px) scale(1) rotate(-180deg); opacity: 0; }
+    }
+    @keyframes star-burst5 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(0px, -60px) scale(0.8) rotate(360deg); opacity: 0; }
+    }
+    @keyframes star-burst6 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(60px, 0px) scale(0.8) rotate(-360deg); opacity: 0; }
+    }
+    @keyframes star-burst7 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(0px, 60px) scale(0.8) rotate(360deg); opacity: 0; }
+    }
+    @keyframes star-burst8 {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-60px, 0px) scale(0.8) rotate(-360deg); opacity: 0; }
+    }
+    @keyframes score-popup {
+      0% { transform: translateY(0) scale(0.5); opacity: 1; }
+      50% { transform: translateY(-30px) scale(1.2); opacity: 1; }
+      100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+    }
+    @keyframes combo-bounce {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px) rotate(-2deg); }
+      75% { transform: translateX(5px) rotate(2deg); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.3), 0 0 60px rgba(255, 215, 0, 0.1); }
+      50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.5), 0 0 90px rgba(255, 215, 0, 0.3); }
+    }
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1) rotate(180deg); }
+    }
+    @keyframes slide-in {
+      0% { opacity: 0; transform: translateY(30px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes drop {
+      0% { transform: translateY(-200%); opacity: 0.5; }
+      60% { transform: translateY(8px); opacity: 1; }
+      80% { transform: translateY(-3px); }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-3deg) scale(1.05); }
+      75% { transform: rotate(3deg) scale(1.05); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Lucide Reactアイコンの代替（シンプルなSVGアイコン）
+    const RotateCcw = ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      </svg>
+    );
+
+    const Star = ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    );
+
+    const Zap = ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    );
+
+    const Match3Game = () => {
+      const rows = 8;
+      const cols = 8;
+      const colors = ['🔴', '🟢', '🔵', '🟡', '🟣', '🟠'];
+      
+      const [board, setBoard] = useState([]);
+      const [selectedCell, setSelectedCell] = useState(null);
+      const [score, setScore] = useState(0);
+      const [moves, setMoves] = useState(30);
+      const [isGameOver, setIsGameOver] = useState(false);
+      const [isAnimating, setIsAnimating] = useState(false);
+      const [swappingCells, setSwappingCells] = useState(null);
+      const [matchingCells, setMatchingCells] = useState([]);
+      const [droppingCells, setDroppingCells] = useState([]);
+      const [highScore, setHighScore] = useState(0);
+      const [combo, setCombo] = useState(0);
+      const [showCombo, setShowCombo] = useState(false);
+      const [scorePopups, setScorePopups] = useState([]);
+      const [showStartScreen, setShowStartScreen] = useState(true);
+
+      useEffect(() => {
+        loadHighScore();
+      }, []);
+
+      useEffect(() => {
+        if (moves === 0 && !isGameOver && !isAnimating) {
+          setIsGameOver(true);
+          if (score > highScore) {
+            setHighScore(score);
+            saveHighScore(score);
+          }
+        }
+      }, [moves, isAnimating, isGameOver, score, highScore]);
+
+      const loadHighScore = () => {
+        try {
+          const saved = localStorage.getItem('match3-highscore');
+          if (saved) {
+            setHighScore(parseInt(saved));
+          }
+        } catch (error) {
+          console.log('ハイスコア読み込みエラー:', error);
+        }
+      };
+
+      const saveHighScore = (newScore) => {
+        try {
+          localStorage.setItem('match3-highscore', newScore.toString());
+        } catch (error) {
+          console.log('ハイスコア保存エラー:', error);
+        }
+      };
+
+      const startGame = () => {
+        initializeBoard();
+        setShowStartScreen(false);
+      };
+
+      const initializeBoard = () => {
+        let newBoard;
+        do {
+          newBoard = Array(rows).fill(null).map(() =>
+            Array(cols).fill(null).map(() => colors[Math.floor(Math.random() * colors.length)])
+          );
+        } while (hasMatches(newBoard));
+        
+        setBoard(newBoard);
+        setScore(0);
+        setMoves(30);
+        setIsGameOver(false);
+        setSelectedCell(null);
+        setCombo(0);
+        setShowCombo(false);
+        setScorePopups([]);
+      };
+
+      const hasMatches = (checkBoard) => {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (c <= cols - 3) {
+              if (checkBoard[r][c] === checkBoard[r][c + 1] && 
+                  checkBoard[r][c] === checkBoard[r][c + 2]) {
+                return true;
+              }
+            }
+            if (r <= rows - 3) {
+              if (checkBoard[r][c] === checkBoard[r + 1][c] && 
+                  checkBoard[r][c] === checkBoard[r + 2][c]) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      };
+
+      const findMatches = (checkBoard) => {
+        const matches = [];
+        
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols - 2; c++) {
+            if (checkBoard[r][c] && 
+                checkBoard[r][c] === checkBoard[r][c + 1] && 
+                checkBoard[r][c] === checkBoard[r][c + 2]) {
+              matches.push([r, c], [r, c + 1], [r, c + 2]);
+              
+              let extraC = c + 3;
+              while (extraC < cols && checkBoard[r][extraC] === checkBoard[r][c]) {
+                matches.push([r, extraC]);
+                extraC++;
+              }
+            }
+          }
+        }
+        
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows - 2; r++) {
+            if (checkBoard[r][c] && 
+                checkBoard[r][c] === checkBoard[r + 1][c] && 
+                checkBoard[r][c] === checkBoard[r + 2][c]) {
+              matches.push([r, c], [r + 1, c], [r + 2, c]);
+              
+              let extraR = r + 3;
+              while (extraR < rows && checkBoard[extraR][c] === checkBoard[r][c]) {
+                matches.push([extraR, c]);
+                extraR++;
+              }
+            }
+          }
+        }
+        
+        return matches;
+      };
+
+      const removeMatches = async (newBoard) => {
+        const matches = findMatches(newBoard);
+        
+        if (matches.length === 0) {
+          setCombo(0);
+          return false;
+        }
+        
+        const uniqueMatches = [...new Set(matches.map(m => JSON.stringify(m)))].map(m => JSON.parse(m));
+        
+        const newCombo = combo + 1;
+        setCombo(newCombo);
+        
+        const baseScore = uniqueMatches.length * 10;
+        const comboBonus = newCombo > 1 ? baseScore * (newCombo - 1) : 0;
+        const totalScore = baseScore + comboBonus;
+        
+        const popupId = Date.now();
+        setScorePopups(prev => [...prev, { id: popupId, score: totalScore, combo: newCombo }]);
+        setTimeout(() => {
+          setScorePopups(prev => prev.filter(p => p.id !== popupId));
+        }, 2000);
+        
+        if (newCombo > 1) {
+          setShowCombo(true);
+          setTimeout(() => setShowCombo(false), 1500);
+        }
+        
+        setMatchingCells(uniqueMatches);
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        setScore(prev => prev + totalScore);
+        
+        uniqueMatches.forEach(([r, c]) => {
+          newBoard[r][c] = null;
+        });
+        
+        setBoard([...newBoard]);
+        setMatchingCells([]);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        return true;
+      };
+
+      const dropTiles = async (newBoard) => {
+        let dropped = false;
+        const dropping = [];
+        
+        for (let c = 0; c < cols; c++) {
+          let emptyRow = rows - 1;
+          for (let r = rows - 1; r >= 0; r--) {
+            if (newBoard[r][c] !== null) {
+              if (r !== emptyRow) {
+                newBoard[emptyRow][c] = newBoard[r][c];
+                newBoard[r][c] = null;
+                dropping.push([emptyRow, c]);
+                dropped = true;
+              }
+              emptyRow--;
+            }
+          }
+        }
+        
+        if (dropped) {
+          setDroppingCells(dropping);
+          setBoard([...newBoard]);
+          await new Promise(resolve => setTimeout(resolve, 400));
+          setDroppingCells([]);
+        }
+        
+        return dropped;
+      };
+
+      const fillEmpty = async (newBoard) => {
+        let filled = false;
+        const newPieces = [];
+        
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (newBoard[r][c] === null) {
+              newBoard[r][c] = colors[Math.floor(Math.random() * colors.length)];
+              newPieces.push([r, c]);
+              filled = true;
+            }
+          }
+        }
+        
+        if (filled) {
+          setDroppingCells(newPieces);
+          setBoard([...newBoard]);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setDroppingCells([]);
+        }
+        
+        return filled;
+      };
+
+      const processMatches = async (newBoard) => {
+        setIsAnimating(true);
+        
+        while (true) {
+          const hasMatch = await removeMatches(newBoard);
+          if (!hasMatch) break;
+          
+          await dropTiles(newBoard);
+          await fillEmpty(newBoard);
+        }
+        
+        setIsAnimating(false);
+      };
+
+      const handleCellClick = async (row, col) => {
+        if (isAnimating || isGameOver) return;
+        
+        if (selectedCell === null) {
+          setSelectedCell({ row, col });
+        } else {
+          const { row: selRow, col: selCol } = selectedCell;
+          
+          const isAdjacent = 
+            (Math.abs(row - selRow) === 1 && col === selCol) ||
+            (Math.abs(col - selCol) === 1 && row === selRow);
+          
+          if (isAdjacent) {
+            setSwappingCells([{row: selRow, col: selCol}, {row, col}]);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const newBoard = board.map(r => [...r]);
+            [newBoard[row][col], newBoard[selRow][selCol]] = 
+            [newBoard[selRow][selCol], newBoard[row][col]];
+            
+            const hasMatch = findMatches(newBoard).length > 0;
+            
+            if (hasMatch) {
+              setBoard(newBoard);
+              setSwappingCells(null);
+              const newMoves = moves - 1;
+              setMoves(newMoves);
+              await processMatches(newBoard);
+              
+              if (newMoves === 0 && !isAnimating) {
+                setIsGameOver(true);
+                if (score > highScore) {
+                  setHighScore(score);
+                  saveHighScore(score);
+                }
+              }
+            } else {
+              setBoard(newBoard);
+              await new Promise(resolve => setTimeout(resolve, 200));
+              setSwappingCells([{row, col}, {row: selRow, col: selCol}]);
+              await new Promise(resolve => setTimeout(resolve, 300));
+              setBoard(board.map(r => [...r]));
+              setSwappingCells(null);
+            }
+          }
+          
+          setSelectedCell(null);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-500 p-4 flex items-center justify-center">
+          {showStartScreen ? (
+            <div className="max-w-2xl w-full">
+              <div className="text-center relative">
+                <div className="mb-8" style={{ animation: 'float 3s ease-in-out infinite' }}>
+                  <h1 className="text-6xl font-bold text-white mb-2 drop-shadow-2xl">マッチ3</h1>
+                  <h2 className="text-4xl font-bold text-yellow-300 drop-shadow-lg">パズル</h2>
+                </div>
+                
+                <div className="flex justify-center gap-6 mb-8 text-5xl">
+                  <span style={{ animation: 'float 2s ease-in-out infinite' }}>🔴</span>
+                  <span style={{ animation: 'float 2s ease-in-out infinite 0.2s' }}>🟢</span>
+                  <span style={{ animation: 'float 2s ease-in-out infinite 0.4s' }}>🔵</span>
+                  <span style={{ animation: 'float 2s ease-in-out infinite 0.6s' }}>🟡</span>
+                  <span style={{ animation: 'float 2s ease-in-out infinite 0.8s' }}>🟣</span>
+                  <span style={{ animation: 'float 2s ease-in-out infinite 1s' }}>🟠</span>
+                </div>
+                
+                {highScore > 0 && (
+                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 px-8 py-4 rounded-2xl shadow-2xl mb-8 inline-block" style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}>
+                    <div className="flex items-center gap-3">
+                      <Star className="w-8 h-8 text-white" />
+                      <div>
+                        <div className="text-sm text-white/90">ハイスコア</div>
+                        <div className="text-4xl font-bold text-white">{highScore}</div>
+                      </div>
+                      <Star className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mb-8">
+                  <button onClick={startGame} className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white px-12 py-6 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-110 transition-all duration-300" style={{ animation: 'slide-in 0.5s ease-out' }}>
+                    🎮 スタート 🎮
+                  </button>
+                </div>
+                
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl text-left max-w-md mx-auto" style={{ animation: 'slide-in 0.5s ease-out 0.2s backwards' }}>
+                  <h3 className="font-bold text-xl mb-4 text-purple-600 flex items-center gap-2">
+                    <Zap className="w-6 h-6" />遊び方
+                  </h3>
+                  <ul className="text-sm space-y-2 text-gray-700">
+                    <li className="flex items-start gap-2"><span className="text-purple-500 font-bold">●</span><span>隣接する2つのピースをクリックして入れ替え</span></li>
+                    <li className="flex items-start gap-2"><span className="text-green-500 font-bold">●</span><span>同じ色を縦または横に3つ以上揃えると消える</span></li>
+                    <li className="flex items-start gap-2"><span className="text-blue-500 font-bold">●</span><span>消えたピースは上から新しいピースが落ちてくる</span></li>
+                    <li className="flex items-start gap-2"><span className="text-orange-500 font-bold">●</span><span>連鎖するとコンボボーナスで高得点！</span></li>
+                    <li className="flex items-start gap-2"><span className="text-red-500 font-bold">●</span><span>30手以内にハイスコアを目指そう！</span></li>
+                  </ul>
+                </div>
+                
+                <div className="absolute top-20 left-20 text-yellow-300 text-3xl" style={{ animation: 'sparkle 2s ease-in-out infinite' }}>✨</div>
+                <div className="absolute top-32 right-24 text-yellow-300 text-2xl" style={{ animation: 'sparkle 2s ease-in-out infinite 0.5s' }}>⭐</div>
+                <div className="absolute bottom-32 left-32 text-yellow-300 text-2xl" style={{ animation: 'sparkle 2s ease-in-out infinite 1s' }}>✨</div>
+                <div className="absolute bottom-20 right-20 text-yellow-300 text-3xl" style={{ animation: 'sparkle 2s ease-in-out infinite 1.5s' }}>⭐</div>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-2xl w-full">
+              <div className="text-center mb-6">
+                <h1 className="text-4xl font-bold text-white mb-4 flex items-center justify-center gap-2">
+                  <Star className="w-10 h-10" />マッチ3パズル<Star className="w-10 h-10" />
+                </h1>
+                
+                <div className="flex justify-center gap-4 mb-4">
+                  <div className="bg-white/90 backdrop-blur-sm px-6 py-3 rounded-xl shadow-lg">
+                    <div className="text-sm text-gray-600">スコア</div>
+                    <div className="text-2xl font-bold text-purple-600">{score}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 px-6 py-3 rounded-xl shadow-lg">
+                    <div className="text-sm text-white">ハイスコア</div>
+                    <div className="text-2xl font-bold text-white flex items-center gap-1">
+                      <Star className="w-5 h-5" />{highScore}
+                    </div>
+                  </div>
+                  <div className="bg-white/90 backdrop-blur-sm px-6 py-3 rounded-xl shadow-lg">
+                    <div className="text-sm text-gray-600">残り手数</div>
+                    <div className="text-2xl font-bold text-orange-600 flex items-center justify-center gap-1">
+                      <Zap className="w-5 h-5" />{moves}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="inline-grid gap-1 p-4 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                    {board.map((row, r) =>
+                      row.map((cell, c) => {
+                        const isSelected = selectedCell?.row === r && selectedCell?.col === c;
+                        const isSwapping = swappingCells?.some(s => s.row === r && s.col === c);
+                        const isMatching = matchingCells.some(([mr, mc]) => mr === r && mc === c);
+                        const isDropping = droppingCells.some(([dr, dc]) => dr === r && dc === c);
+                        
+                        return (
+                          <div key={`${r}-${c}`} onClick={() => handleCellClick(r, c)} className="relative w-10 h-10 sm:w-12 sm:h-12" style={{ overflow: 'visible' }}>
+                            <div className={`w-full h-full rounded-lg flex items-center justify-center text-2xl sm:text-3xl cursor-pointer ${isSelected ? 'scale-110 ring-4 ring-yellow-400 shadow-xl' : ''} ${isSwapping ? 'scale-95' : 'hover:scale-110 hover:rotate-6'} ${!isMatching && !isSwapping && !isDropping ? 'hover:shadow-lg' : ''}`} style={{
+                              backgroundColor: cell ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
+                              transform: isSwapping ? 'rotate(10deg)' : '',
+                              animation: isMatching ? 'splat 0.4s ease-out forwards, wiggle 0.5s ease-in-out' : isDropping ? 'drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' : isSelected ? 'wiggle 0.5s ease-in-out' : undefined,
+                              transition: !isDropping && !isMatching ? 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'none',
+                            }}>
+                              {cell}
+                            </div>
+                            {isMatching && (
+                              <>
+                                {[1, 2, 3, 4, 5, 6].map(i => (
+                                  <div key={i} className="absolute inset-0" style={{
+                                    animation: `slime-splash${i} ${0.5 + i * 0.05}s ease-out ${i * 0.05}s forwards`,
+                                    backgroundColor: `rgba(${100 + i * 10}, ${200 + i * 5}, 255, ${0.5 - i * 0.05})`,
+                                    filter: `blur(${2 - i * 0.2}px)`
+                                  }} />
+                                ))}
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                                  <div key={`star${i}`} className="absolute top-1/2 left-1/2 text-yellow-300" style={{
+                                    fontSize: i <= 4 ? '18px' : '14px',
+                                    animation: `star-burst${i} ${0.5 + i * 0.05}s ease-out ${i * 0.05}s forwards`,
+                                    textShadow: '0 0 10px rgba(255, 215, 0, 0.8)'
+                                  }}>
+                                    {i <= 4 ? '⭐' : '✨'}
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {showCombo && combo > 1 && (
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50" style={{ animation: 'combo-bounce 0.5s ease-out' }}>
+                      <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-full shadow-2xl border-4 border-white">
+                        <div className="text-4xl font-bold">{combo} COMBO!</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {scorePopups.map((popup) => (
+                    <div key={popup.id} className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40" style={{ animation: 'score-popup 2s ease-out forwards' }}>
+                      <div className="text-3xl font-bold text-yellow-300" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5), 0 0 20px rgba(255,215,0,0.8)' }}>
+                        +{popup.score}
+                        {popup.combo > 1 && <span className="text-2xl ml-2">×{popup.combo}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {isGameOver && (
+                <div className="bg-white rounded-xl p-6 mb-4 shadow-2xl text-center">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">ゲーム終了！</h3>
+                  <p className="text-gray-600 mb-2">
+                    最終スコア: <span className="text-3xl font-bold text-purple-600">{score}</span>
+                  </p>
+                  {score > highScore && highScore > 0 && (
+                    <p className="text-2xl font-bold text-yellow-600 mb-4" style={{ animation: 'shake 0.5s ease-in-out' }}>
+                      🎉 新記録達成！ 🎉
+                    </p>
+                  )}
+                  {score === highScore && score > 0 && (
+                    <p className="text-lg font-bold text-orange-600 mb-4">
+                      ⭐ ハイスコア: {highScore} ⭐
+                    </p>
+                  )}
+                  <button
+                    onClick={initializeBoard}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-bold hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                  >
+                    もう一度プレイ
+                  </button>
+                </div>
+              )}
+
+              <div className="flex justify-center mb-4">
+                <button
+                  onClick={initializeBoard}
+                  className="bg-white/90 hover:bg-white text-gray-800 px-6 py-3 rounded-lg font-bold transition-all duration-200 flex items-center gap-2 shadow-lg"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  新しいゲーム
+                </button>
+              </div>
+
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-white">
+                <h3 className="font-bold mb-2">遊び方:</h3>
+                <ul className="text-sm space-y-1">
+                  <li>• 隣接する2つのピースをクリックして入れ替え</li>
+                  <li>• 同じ色を縦または横に3つ以上揃えると消える</li>
+                  <li>• 消えたピースは上から新しいピースが落ちてくる</li>
+                  <li>• 連鎖するとコンボボーナスで高得点！</li>
+                  <li>• 30手以内にハイスコアを目指そう！</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<Match3Game />);
+  </script>
+</body>
+</html>
