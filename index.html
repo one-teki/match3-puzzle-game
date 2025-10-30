@@ -14,6 +14,20 @@
       20% { transform: scale(1.3) rotate(0deg); opacity: 1; }
       100% { transform: scale(0.1) rotate(20deg); opacity: 0; }
     }
+    @keyframes explosion {
+      0% { transform: scale(0.5); opacity: 1; }
+      50% { transform: scale(2); opacity: 0.8; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+    @keyframes lightning {
+      0%, 100% { opacity: 0; }
+      10%, 30%, 50%, 70%, 90% { opacity: 1; }
+      20%, 40%, 60%, 80% { opacity: 0.3; }
+    }
+    @keyframes rainbow-pulse {
+      0% { filter: hue-rotate(0deg) brightness(1.2); }
+      100% { filter: hue-rotate(360deg) brightness(1.5); }
+    }
     @keyframes slime-splash1 {
       0% { transform: scale(0.5) translateX(0) translateY(0); opacity: 1; border-radius: 50%; }
       100% { transform: scale(2) translateX(-40px) translateY(-35px); opacity: 0; border-radius: 30% 70% 70% 30%; }
@@ -112,6 +126,10 @@
       25% { transform: rotate(-3deg) scale(1.05); }
       75% { transform: rotate(3deg) scale(1.05); }
     }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -120,7 +138,6 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Lucide Reactアイコンの代替（シンプルなSVGアイコン）
     const RotateCcw = ({ className }) => (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M1 4v6h6M23 20v-6h-6"/>
@@ -159,20 +176,15 @@
       const [showCombo, setShowCombo] = useState(false);
       const [scorePopups, setScorePopups] = useState([]);
       const [showStartScreen, setShowStartScreen] = useState(true);
+      const [specialPieces, setSpecialPieces] = useState([]); // {row, col, type: 'bomb', 'lightning', 'rainbow'}
 
       useEffect(() => {
         loadHighScore();
       }, []);
 
       useEffect(() => {
-        if (moves === 0 && !isGameOver && !isAnimating) {
-          setIsGameOver(true);
-          if (score > highScore) {
-            setHighScore(score);
-            saveHighScore(score);
-          }
-        }
-      }, [moves, isAnimating, isGameOver, score, highScore]);
+        loadHighScore();
+      }, []);
 
       const loadHighScore = () => {
         try {
@@ -214,6 +226,7 @@
         setCombo(0);
         setShowCombo(false);
         setScorePopups([]);
+        setSpecialPieces([]);
       };
 
       const hasMatches = (checkBoard) => {
@@ -238,55 +251,135 @@
 
       const findMatches = (checkBoard) => {
         const matches = [];
+        const matchGroups = []; // 各マッチグループを記録
         
+        // 横方向のマッチ
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols - 2; c++) {
             if (checkBoard[r][c] && 
                 checkBoard[r][c] === checkBoard[r][c + 1] && 
                 checkBoard[r][c] === checkBoard[r][c + 2]) {
-              matches.push([r, c], [r, c + 1], [r, c + 2]);
+              const group = [[r, c], [r, c + 1], [r, c + 2]];
               
               let extraC = c + 3;
               while (extraC < cols && checkBoard[r][extraC] === checkBoard[r][c]) {
-                matches.push([r, extraC]);
+                group.push([r, extraC]);
                 extraC++;
               }
+              
+              matches.push(...group);
+              matchGroups.push(group);
             }
           }
         }
         
+        // 縦方向のマッチ
         for (let c = 0; c < cols; c++) {
           for (let r = 0; r < rows - 2; r++) {
             if (checkBoard[r][c] && 
                 checkBoard[r][c] === checkBoard[r + 1][c] && 
                 checkBoard[r][c] === checkBoard[r + 2][c]) {
-              matches.push([r, c], [r + 1, c], [r + 2, c]);
+              const group = [[r, c], [r + 1, c], [r + 2, c]];
               
               let extraR = r + 3;
               while (extraR < rows && checkBoard[extraR][c] === checkBoard[r][c]) {
-                matches.push([extraR, c]);
+                group.push([extraR, c]);
                 extraR++;
+              }
+              
+              matches.push(...group);
+              matchGroups.push(group);
+            }
+          }
+        }
+        
+        return { matches, matchGroups };
+      };
+
+      const createSpecialPiece = (matchGroup) => {
+        const length = matchGroup.length;
+        if (length < 4) return null;
+        
+        // マッチグループの中心位置を計算
+        const centerIndex = Math.floor(matchGroup.length / 2);
+        const [row, col] = matchGroup[centerIndex];
+        
+        if (length === 4) {
+          return { row, col, type: 'bomb' }; // 💣
+        } else if (length === 5) {
+          return { row, col, type: 'lightning' }; // ⚡
+        } else if (length >= 6) {
+          return { row, col, type: 'rainbow' }; // 🌈
+        }
+        return null;
+      };
+
+      const activateSpecialPiece = (row, col, type, newBoard) => {
+        const cellsToRemove = [];
+        
+        if (type === 'bomb') {
+          // 周囲3x3を消す
+          for (let r = Math.max(0, row - 1); r <= Math.min(rows - 1, row + 1); r++) {
+            for (let c = Math.max(0, col - 1); c <= Math.min(cols - 1, col + 1); c++) {
+              cellsToRemove.push([r, c]);
+            }
+          }
+        } else if (type === 'lightning') {
+          // 十字方向を全て消す
+          for (let c = 0; c < cols; c++) {
+            cellsToRemove.push([row, c]);
+          }
+          for (let r = 0; r < rows; r++) {
+            cellsToRemove.push([r, col]);
+          }
+        } else if (type === 'rainbow') {
+          // 同じ色を全て消す
+          const targetColor = newBoard[row][col];
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (newBoard[r][c] === targetColor) {
+                cellsToRemove.push([r, c]);
               }
             }
           }
         }
         
-        return matches;
+        return cellsToRemove;
       };
 
       const removeMatches = async (newBoard) => {
-        const matches = findMatches(newBoard);
+        const { matches, matchGroups } = findMatches(newBoard);
         
-        if (matches.length === 0) {
+        // 特殊ピースの効果を適用
+        let cellsToRemove = [...matches];
+        const newSpecialPieces = [];
+        
+        for (const sp of specialPieces) {
+          if (cellsToRemove.some(([r, c]) => r === sp.row && c === sp.col)) {
+            const specialCells = activateSpecialPiece(sp.row, sp.col, sp.type, newBoard);
+            cellsToRemove.push(...specialCells);
+          }
+        }
+        
+        if (cellsToRemove.length === 0 && matchGroups.length === 0) {
           setCombo(0);
           return false;
         }
         
-        const uniqueMatches = [...new Set(matches.map(m => JSON.stringify(m)))].map(m => JSON.parse(m));
+        // 新しい特殊ピースを生成
+        for (const group of matchGroups) {
+          const special = createSpecialPiece(group);
+          if (special) {
+            newSpecialPieces.push(special);
+          }
+        }
+        
+        const uniqueMatches = [...new Set(cellsToRemove.map(m => JSON.stringify(m)))].map(m => JSON.parse(m));
         
         const newCombo = combo + 1;
         setCombo(newCombo);
         
+        // 消えたピース数×10点（特殊ピースも含む）
         const baseScore = uniqueMatches.length * 10;
         const comboBonus = newCombo > 1 ? baseScore * (newCombo - 1) : 0;
         const totalScore = baseScore + comboBonus;
@@ -311,6 +404,14 @@
           newBoard[r][c] = null;
         });
         
+        // 特殊ピースを除外して更新
+        setSpecialPieces(prev => {
+          const remaining = prev.filter(sp => 
+            !uniqueMatches.some(([r, c]) => r === sp.row && c === sp.col)
+          );
+          return [...remaining, ...newSpecialPieces];
+        });
+        
         setBoard([...newBoard]);
         setMatchingCells([]);
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -322,6 +423,9 @@
         let dropped = false;
         const dropping = [];
         
+        // 特殊ピースの位置も更新
+        const updatedSpecialPieces = [];
+        
         for (let c = 0; c < cols; c++) {
           let emptyRow = rows - 1;
           for (let r = rows - 1; r >= 0; r--) {
@@ -330,11 +434,32 @@
                 newBoard[emptyRow][c] = newBoard[r][c];
                 newBoard[r][c] = null;
                 dropping.push([emptyRow, c]);
+                
+                // 特殊ピースの位置を更新
+                const specialIndex = specialPieces.findIndex(sp => sp.row === r && sp.col === c);
+                if (specialIndex !== -1) {
+                  updatedSpecialPieces.push({
+                    ...specialPieces[specialIndex],
+                    row: emptyRow
+                  });
+                }
+                
                 dropped = true;
               }
               emptyRow--;
             }
           }
+        }
+        
+        if (updatedSpecialPieces.length > 0) {
+          setSpecialPieces(prev => {
+            const remaining = prev.filter(sp => 
+              !updatedSpecialPieces.some(usp => 
+                usp.row === sp.row && usp.col === sp.col && usp.type === sp.type
+              )
+            );
+            return [...remaining, ...updatedSpecialPieces];
+          });
         }
         
         if (dropped) {
@@ -383,6 +508,20 @@
         }
         
         setIsAnimating(false);
+        
+        // アニメーション完了後、ゲーム終了なら最終スコアでハイスコアを更新
+        if (moves === 0) {
+          setTimeout(() => {
+            setIsGameOver(true);
+            setScore(currentScore => {
+              if (currentScore > highScore) {
+                setHighScore(currentScore);
+                saveHighScore(currentScore);
+              }
+              return currentScore;
+            });
+          }, 100);
+        }
       };
 
       const handleCellClick = async (row, col) => {
@@ -405,7 +544,19 @@
             [newBoard[row][col], newBoard[selRow][selCol]] = 
             [newBoard[selRow][selCol], newBoard[row][col]];
             
-            const hasMatch = findMatches(newBoard).length > 0;
+            // 特殊ピースもスワップ
+            const updatedSpecial = specialPieces.map(sp => {
+              if (sp.row === row && sp.col === col) {
+                return { ...sp, row: selRow, col: selCol };
+              } else if (sp.row === selRow && sp.col === selCol) {
+                return { ...sp, row, col };
+              }
+              return sp;
+            });
+            setSpecialPieces(updatedSpecial);
+            
+            const hasMatch = findMatches(newBoard).matches.length > 0 || 
+                           updatedSpecial.some(sp => (sp.row === row && sp.col === col) || (sp.row === selRow && sp.col === selCol));
             
             if (hasMatch) {
               setBoard(newBoard);
@@ -413,26 +564,36 @@
               const newMoves = moves - 1;
               setMoves(newMoves);
               await processMatches(newBoard);
-              
-              if (newMoves === 0 && !isAnimating) {
-                setIsGameOver(true);
-                if (score > highScore) {
-                  setHighScore(score);
-                  saveHighScore(score);
-                }
-              }
             } else {
               setBoard(newBoard);
               await new Promise(resolve => setTimeout(resolve, 200));
               setSwappingCells([{row, col}, {row: selRow, col: selCol}]);
               await new Promise(resolve => setTimeout(resolve, 300));
               setBoard(board.map(r => [...r]));
+              setSpecialPieces(specialPieces);
               setSwappingCells(null);
             }
           }
           
           setSelectedCell(null);
         }
+      };
+
+      const getSpecialPiece = (row, col) => {
+        return specialPieces.find(sp => sp.row === row && sp.col === col);
+      };
+
+      const renderPiece = (cell, special) => {
+        if (special) {
+          if (special.type === 'bomb') {
+            return <div className="text-3xl">💣</div>;
+          } else if (special.type === 'lightning') {
+            return <div className="text-3xl" style={{ animation: 'lightning 1s infinite' }}>⚡</div>;
+          } else if (special.type === 'rainbow') {
+            return <div className="text-3xl" style={{ animation: 'rainbow-pulse 2s infinite' }}>🌈</div>;
+          }
+        }
+        return cell;
       };
 
       return (
@@ -480,9 +641,10 @@
                   <ul className="text-sm space-y-2 text-gray-700">
                     <li className="flex items-start gap-2"><span className="text-purple-500 font-bold">●</span><span>隣接する2つのピースをクリックして入れ替え</span></li>
                     <li className="flex items-start gap-2"><span className="text-green-500 font-bold">●</span><span>同じ色を縦または横に3つ以上揃えると消える</span></li>
-                    <li className="flex items-start gap-2"><span className="text-blue-500 font-bold">●</span><span>消えたピースは上から新しいピースが落ちてくる</span></li>
-                    <li className="flex items-start gap-2"><span className="text-orange-500 font-bold">●</span><span>連鎖するとコンボボーナスで高得点！</span></li>
-                    <li className="flex items-start gap-2"><span className="text-red-500 font-bold">●</span><span>30手以内にハイスコアを目指そう！</span></li>
+                    <li className="flex items-start gap-2"><span className="text-blue-500 font-bold">●</span><span>4つ揃えると爆弾💣（3×3を消去＝90点）</span></li>
+                    <li className="flex items-start gap-2"><span className="text-orange-500 font-bold">●</span><span>5つ揃えると稲妻⚡（十字方向を消去＝150点）</span></li>
+                    <li className="flex items-start gap-2"><span className="text-red-500 font-bold">●</span><span>6つ以上で虹🌈（同じ色を全消去）</span></li>
+                    <li className="flex items-start gap-2"><span className="text-yellow-600 font-bold">●</span><span>連鎖するとコンボボーナスで高得点！</span></li>
                   </ul>
                 </div>
                 
@@ -528,19 +690,35 @@
                         const isSwapping = swappingCells?.some(s => s.row === r && s.col === c);
                         const isMatching = matchingCells.some(([mr, mc]) => mr === r && mc === c);
                         const isDropping = droppingCells.some(([dr, dc]) => dr === r && dc === c);
+                        const special = getSpecialPiece(r, c);
                         
                         return (
                           <div key={`${r}-${c}`} onClick={() => handleCellClick(r, c)} className="relative w-10 h-10 sm:w-12 sm:h-12" style={{ overflow: 'visible' }}>
-                            <div className={`w-full h-full rounded-lg flex items-center justify-center text-2xl sm:text-3xl cursor-pointer ${isSelected ? 'scale-110 ring-4 ring-yellow-400 shadow-xl' : ''} ${isSwapping ? 'scale-95' : 'hover:scale-110 hover:rotate-6'} ${!isMatching && !isSwapping && !isDropping ? 'hover:shadow-lg' : ''}`} style={{
+                            <div className={`w-full h-full rounded-lg flex items-center justify-center text-2xl sm:text-3xl cursor-pointer ${isSelected ? 'scale-110 ring-4 ring-yellow-400 shadow-xl' : ''} ${isSwapping ? 'scale-95' : 'hover:scale-110 hover:rotate-6'} ${!isMatching && !isSwapping && !isDropping ? 'hover:shadow-lg' : ''} ${special ? 'ring-2 ring-purple-400' : ''}`} style={{
                               backgroundColor: cell ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
                               transform: isSwapping ? 'rotate(10deg)' : '',
-                              animation: isMatching ? 'splat 0.4s ease-out forwards, wiggle 0.5s ease-in-out' : isDropping ? 'drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' : isSelected ? 'wiggle 0.5s ease-in-out' : undefined,
+                              animation: isMatching ? 'splat 0.4s ease-out forwards, wiggle 0.5s ease-in-out' : isDropping ? 'drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' : isSelected ? 'wiggle 0.5s ease-in-out' : special ? 'spin 3s linear infinite' : undefined,
                               transition: !isDropping && !isMatching ? 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'none',
                             }}>
-                              {cell}
+                              {renderPiece(cell, special)}
                             </div>
                             {isMatching && (
                               <>
+                                {special?.type === 'bomb' && (
+                                  <div className="absolute inset-0 bg-orange-500 rounded-full" style={{ animation: 'explosion 0.6s ease-out forwards' }} />
+                                )}
+                                {special?.type === 'lightning' && (
+                                  <>
+                                    <div className="absolute top-0 left-1/2 w-1 h-full bg-yellow-300" style={{ animation: 'lightning 0.5s ease-out' }} />
+                                    <div className="absolute left-0 top-1/2 w-full h-1 bg-yellow-300" style={{ animation: 'lightning 0.5s ease-out 0.1s' }} />
+                                  </>
+                                )}
+                                {special?.type === 'rainbow' && (
+                                  <div className="absolute inset-0 rounded-full" style={{ 
+                                    animation: 'explosion 0.8s ease-out forwards, rainbow-pulse 0.5s ease-out',
+                                    background: 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)'
+                                  }} />
+                                )}
                                 {[1, 2, 3, 4, 5, 6].map(i => (
                                   <div key={i} className="absolute inset-0" style={{
                                     animation: `slime-splash${i} ${0.5 + i * 0.05}s ease-out ${i * 0.05}s forwards`,
@@ -624,9 +802,10 @@
                 <ul className="text-sm space-y-1">
                   <li>• 隣接する2つのピースをクリックして入れ替え</li>
                   <li>• 同じ色を縦または横に3つ以上揃えると消える</li>
-                  <li>• 消えたピースは上から新しいピースが落ちてくる</li>
+                  <li>• 4つ揃えると爆弾💣（3×3を消去）</li>
+                  <li>• 5つ揃えると稲妻⚡（十字方向を消去）</li>
+                  <li>• 6つ以上で虹🌈（同じ色を全消去）</li>
                   <li>• 連鎖するとコンボボーナスで高得点！</li>
-                  <li>• 30手以内にハイスコアを目指そう！</li>
                 </ul>
               </div>
             </div>
